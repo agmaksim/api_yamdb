@@ -1,8 +1,11 @@
 from django.shortcuts import get_object_or_404
+from django.contrib.auth import get_user_model
 from django.db.models import Avg
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import viewsets, filters
+from rest_framework import viewsets, filters, status
+from rest_framework.decorators import action
 from rest_framework.pagination import LimitOffsetPagination
+from rest_framework.response import Response
 
 from .serializers import (
     CategorySerializer,
@@ -10,9 +13,41 @@ from .serializers import (
     GenreSerializer,
     ReviewSerializer,
     TitleReadSerializer,
-    TitleWriteSerializer
+    TitleWriteSerializer,
+    UserSerializer,
 )
 from reviews.models import Category, Comment, Genre, Review, Title
+
+User = get_user_model()
+
+
+class UserViewSet(viewsets.ModelViewSet):
+    # permission_classes = (IsYourProfileOrNothing,)
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
+    lookup_field = 'username'
+
+    @action(
+        methods=['get', 'patch'],
+        detail=False,
+        url_path='me'
+    )
+    def users_profile(self, request):
+        user = get_object_or_404(User, username=request.user.username)
+
+        if request.method == 'PATCH':
+            serializer = UserSerializer(
+                # Передаю объект request для проверки прав на стадии валидации
+                user, context={'request': request}, data=request.data, partial=True
+            )
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+        serializer = self.get_serializer(user)
+
+        return Response(serializer.data) 
 
 
 class ReviewViewSet(viewsets.ModelViewSet):

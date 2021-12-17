@@ -7,6 +7,46 @@ from reviews.models import Category, Comment, Review, Genre, Title
 User = get_user_model()
 
 
+class UserSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        fields = (
+            'username', 'email', 'first_name',
+            'last_name', 'bio', 'role',
+            # Временно
+            'password'
+        )
+        model = User
+    
+    def create(self, validated_data):
+        '''
+        Временно. При использовании токена по email будет не нужна
+        '''
+        user = User(
+            username=validated_data['username']
+        )
+        user.set_password(validated_data['password'])
+        user.save()
+        return user
+    
+    def validate_role(self, role):
+        user = self.context['request'].user
+        if user.role == 'admin' or user.is_superuser:
+            return role
+
+        raise serializers.ValidationError(
+                'Изменение роли запрещено'
+            )
+    
+    def validate_username(self, username):
+        if username == 'me':
+            raise serializers.ValidationError(
+                'Имя "me" запрещено'
+            )
+        
+        return username
+
+
 class ReviewSerializer(serializers.ModelSerializer):
     author = SlugRelatedField(slug_field='username', read_only=True)
 
