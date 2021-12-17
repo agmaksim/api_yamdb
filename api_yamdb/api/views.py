@@ -47,10 +47,10 @@ class UserViewSet(viewsets.ModelViewSet):
                 serializer.save()
                 return Response(serializer.data, status=status.HTTP_201_CREATED)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        
+
         serializer = self.get_serializer(user)
 
-        return Response(serializer.data) 
+        return Response(serializer.data)
 
 
 class ReviewViewSet(viewsets.ModelViewSet):
@@ -61,7 +61,7 @@ class ReviewViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         title = get_object_or_404(Title, pk=self.kwargs.get('title_id'))
-        serializer.save(author=self.request.user, title__id=title)
+        serializer.save(author=self.request.user, title=title)
 
     def get_queryset(self):
         queryset = Review.objects.filter(title__id=self.kwargs.get('title_id'))
