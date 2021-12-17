@@ -41,7 +41,7 @@ class UserSerializer(serializers.ModelSerializer):
     def validate_username(self, username):
         if username == 'me':
             raise serializers.ValidationError(
-                'Имя "me" запрещено'
+                'Имя me запрещено'
             )
         
         return username
