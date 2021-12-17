@@ -17,7 +17,7 @@ class UserSerializer(serializers.ModelSerializer):
             'password'
         )
         model = User
-    
+
     def create(self, validated_data):
         '''
         Временно. При использовании токена по email будет не нужна
@@ -28,22 +28,22 @@ class UserSerializer(serializers.ModelSerializer):
         user.set_password(validated_data['password'])
         user.save()
         return user
-    
+
     def validate_role(self, role):
         user = self.context['request'].user
         if user.role == 'admin' or user.is_superuser:
             return role
 
         raise serializers.ValidationError(
-                'Изменение роли запрещено'
-            )
-    
+            'Изменение роли запрещено'
+        )
+
     def validate_username(self, username):
         if username == 'me':
             raise serializers.ValidationError(
                 'Имя me запрещено'
             )
-        
+
         return username
 
 
@@ -51,8 +51,23 @@ class ReviewSerializer(serializers.ModelSerializer):
     author = SlugRelatedField(slug_field='username', read_only=True)
 
     class Meta:
-        fields = ('author', 'text', 'score')
+        fields = ('id', 'text', 'author', 'score', 'pub_date')
         model = Review
+
+    def validate(self, data):
+        super().validate(data)
+
+        if self.context['request'].method != 'POST':
+            return data
+
+        user = self.context['request'].user
+        title_id = (
+            self.context['request'].parser_context['kwargs']['title_id']
+        )
+        if Review.objects.filter(author=user, title__id=title_id).exists():
+            raise serializers.ValidationError(
+                'Вы уже оставили отзыв на данное произведение!')
+        return data
 
 
 class CommentSerializer(serializers.ModelSerializer):
