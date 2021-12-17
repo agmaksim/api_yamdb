@@ -74,7 +74,7 @@ class CommentSerializer(serializers.ModelSerializer):
     author = SlugRelatedField(slug_field='username', read_only=True)
 
     class Meta:
-        fields = ('author', 'text')
+        fields = ('id', 'text', 'author', 'pub_date')
         model = Comment
 
 
