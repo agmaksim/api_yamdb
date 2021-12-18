@@ -38,8 +38,13 @@ class UserSerializer(serializers.ModelSerializer):
 
     def validate_role(self, role):
         user = self.context['request'].user
-        if user.role == 'admin' or user.is_superuser:
-            return role
+        try:
+            if user.role == 'admin' or user.is_superuser:
+                return role
+        except:
+            raise serializers.ValidationError(
+                'Это действие доступно только авторизированным пользователям'
+            )
 
         raise serializers.ValidationError(
             'Изменение роли запрещено'
