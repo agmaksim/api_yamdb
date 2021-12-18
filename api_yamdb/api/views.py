@@ -1,12 +1,15 @@
+from random import randint
 from django.shortcuts import get_object_or_404
 from django.contrib.auth import get_user_model
+from django.core.mail import send_mail
 from django.db.models import Avg
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets, filters, status
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework_simplejwt.tokens import RefreshToken
 
 from .serializers import (
     CategorySerializer,
@@ -16,11 +19,101 @@ from .serializers import (
     TitleReadSerializer,
     TitleWriteSerializer,
     UserSerializer,
+    SignUpSerializer,
+    TokenSerializer,
 )
 from reviews.models import Category, Comment, Genre, Review, Title
 from .permissions import OnlyForAdmin, IsAuthorOrReadOnly, ReadOnly
 
 User = get_user_model()
+
+
+def sending_mail(email, confrim_code):
+    try:
+        send_mail(
+            'Authentification',
+            confrim_code,
+            'api_yambd@example.com',
+            [email],
+            fail_silently=False,
+        )
+
+        return None
+
+    except Exception:
+        return 'Ошибка при отправке сообщения'
+
+
+@api_view(['POST',])
+@permission_classes([AllowAny])
+def auth_signup(request):
+    serializer = SignUpSerializer(data=request.data)
+
+    if serializer.is_valid():
+        confrim_code = str(randint(111111, 999999))
+        email = serializer.validated_data.get('email')
+        error = sending_mail(email, confrim_code)
+        if error:
+            return Response(error, status=status.HTTP_400_BAD_REQUEST)
+
+        serializer.validated_data['confirm_code'] = confrim_code
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+    # Если есть ошибка в имени пользователя
+    if serializer.errors.get('username'):
+        error_code = serializer.errors.get('username')[0].code
+    else:
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    # Не прошло валидацию:
+    # Если из-за наличия user'a с таким именем - повторное получение кода
+    # Иначе - некорректные данные
+    if error_code == 'unique':
+        username = serializer.initial_data.get('username')
+        email = serializer.initial_data.get('email')
+        user = get_object_or_404(User, username=username)
+
+        if email == user.email:
+            confirm_code = str(randint(111111, 999999))
+            error = sending_mail(email, confirm_code)
+            if error:
+                return Response(error, status=status.HTTP_400_BAD_REQUEST)
+            
+            user.confirm_code = int(confirm_code)
+            user.save()
+
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        
+        return Response(
+            'Полученная почта не является почтой данного пользователя',
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['POST',])
+@permission_classes([AllowAny])
+def auth_get_token(request):
+    serializer = TokenSerializer(data=request.data)
+
+    user = get_object_or_404(
+        User,
+        username=serializer.initial_data.get('username')
+    )
+
+    code = serializer.initial_data.get('confirm_code')
+
+    if code == user.confirm_code:
+        refresh = RefreshToken.for_user(user)
+        
+        token =  {
+            'token': str(refresh.access_token),
+        }
+        return Response(token, status=status.HTTP_200_OK)
+            
+    return Response('Неверный код', status=status.HTTP_400_BAD_REQUEST)
 
 
 class UserViewSet(viewsets.ModelViewSet):

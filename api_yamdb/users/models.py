@@ -20,3 +20,16 @@ class User(AbstractUser):
     )
 
     bio = models.CharField(max_length=256, blank=True)
+
+    confirm_code = models.IntegerField()
+
+'''
+class Confirmation(models.Model):
+    username = models.CharField(
+        max_length=150,
+    )
+    email = models.EmailField(
+        max_length=254,
+    )
+    code = models.IntegerField()
+'''
