@@ -21,4 +21,4 @@ class User(AbstractUser):
 
     bio = models.CharField(max_length=256, blank=True)
 
-    confirm_code = models.IntegerField()
+    confirm_code = models.IntegerField(blank=True, null=True)
