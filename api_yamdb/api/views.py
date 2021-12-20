@@ -10,6 +10,8 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from .filters import TitleFilter
+
 from .serializers import (
     CategorySerializer,
     CommentSerializer,
@@ -28,7 +30,11 @@ from .pagination import YamdbPagination
 User = get_user_model()
 
 
-class CreateDestroyListViewSet(mixins.CreateModelMixin, mixins.DestroyModelMixin, mixins.ListModelMixin, viewsets.GenericViewSet):
+class CreateDestroyListViewSet(mixins.CreateModelMixin,
+    mixins.DestroyModelMixin,
+    mixins.ListModelMixin,
+    viewsets.GenericViewSet
+):
     pass
 
 
@@ -48,7 +54,7 @@ def sending_mail(email, confrimation_code):
         return 'Ошибка при отправке сообщения'
 
 
-@api_view(['POST',])
+@api_view(['POST', ])
 @permission_classes([AllowAny])
 def auth_signup(request):
     serializer = SignUpSerializer(data=request.data)
@@ -63,7 +69,7 @@ def auth_signup(request):
         serializer.validated_data['confirmation_code'] = confrimation_code
         serializer.save()
         return Response(serializer.data, status=status.HTTP_200_OK)
-    
+
     # Если есть ошибка в имени пользователя
     if serializer.errors.get('username'):
         error_code = serializer.errors.get('username')[0].code
@@ -83,12 +89,12 @@ def auth_signup(request):
             error = sending_mail(email, confirmation_code)
             if error:
                 return Response(error, status=status.HTTP_400_BAD_REQUEST)
-            
+
             user.confirmation_code = int(confirmation_code)
             user.save()
 
             return Response(serializer.data, status=status.HTTP_200_OK)
-        
+
         return Response(
             'Полученная почта не является почтой данного пользователя',
             status=status.HTTP_400_BAD_REQUEST
@@ -97,7 +103,7 @@ def auth_signup(request):
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-@api_view(['POST',])
+@api_view(['POST', ])
 @permission_classes([AllowAny])
 def auth_get_token(request):
     serializer = TokenSerializer(data=request.data)
@@ -114,12 +120,12 @@ def auth_get_token(request):
 
     if code == user.confirmation_code:
         refresh = RefreshToken.for_user(user)
-        
-        token =  {
+
+        token = {
             'token': str(refresh.access_token),
         }
         return Response(token, status=status.HTTP_200_OK)
-            
+
     return Response('Неверный код', status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -136,7 +142,7 @@ class UserViewSet(viewsets.ModelViewSet):
         methods=['get', 'patch'],
         detail=False,
         url_path='me',
-        permission_classes = (IsAuthenticated,)
+        permission_classes=(IsAuthenticated,)
     )
     def users_profile(self, request):
         user = get_object_or_404(User, username=request.user.username)
@@ -176,7 +182,7 @@ class TitleViewSet(viewsets.ModelViewSet):
     queryset = Title.objects.all().annotate(Avg('reviews__score'))
     pagination_class = YamdbPagination
     filter_backends = (DjangoFilterBackend,)
-    filterset_fields = ('name', 'category__slug', 'genre__slug')
+    filterset_class = TitleFilter
     permission_classes = (ReadOnly,)
 
     def get_serializer_class(self):

@@ -18,7 +18,7 @@ class SignUpSerializer(serializers.ModelSerializer):
             'username', 'email'
         )
         model = User
-    
+
     def validate_username(self, username):
         if username == 'me':
             raise serializers.ValidationError(

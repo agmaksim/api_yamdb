@@ -7,7 +7,7 @@ def is_staff(user):
 
     if user.role in ('admin', 'moderator') or user.is_staff:
         return True
-    
+
     return False
 
 
@@ -15,9 +15,9 @@ def is_admin(user):
     if user.is_anonymous:
         return False
 
-    if user.role == 'admin'  or user.is_staff:
+    if user.role == 'admin' or user.is_staff:
         return True
-    
+
     return False
 
 
