@@ -1,5 +1,6 @@
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
+from rest_framework.validators import UniqueValidator
 from rest_framework.relations import SlugRelatedField
 
 from reviews.models import Category, Comment, Review, Genre, Title
@@ -8,26 +9,39 @@ User = get_user_model()
 
 
 class SignUpSerializer(serializers.ModelSerializer):
-    email = serializers.EmailField(required=True)
+    email = serializers.EmailField(
+        validators=[UniqueValidator(queryset=User.objects.all())]
+    )
 
     class Meta:
         fields = (
             'username', 'email'
         )
         model = User
+    
+    def validate_username(self, username):
+        if username == 'me':
+            raise serializers.ValidationError(
+                'Имя me запрещено'
+            )
+
+        return username
 
 
 class TokenSerializer(serializers.ModelSerializer):
-    confirm_code = serializers.IntegerField(required=True)
+    confirmation_code = serializers.IntegerField(required=True)
 
     class Meta:
         fields = (
-            'username', 'confirm_code'
+            'username', 'confirmation_code'
         )
         model = User
 
 
 class UserSerializer(serializers.ModelSerializer):
+    email = serializers.EmailField(
+        validators=[UniqueValidator(queryset=User.objects.all())]
+    )
 
     class Meta:
         fields = (
@@ -38,17 +52,10 @@ class UserSerializer(serializers.ModelSerializer):
 
     def validate_role(self, role):
         user = self.context['request'].user
-        try:
-            if user.role == 'admin' or user.is_superuser:
-                return role
-        except:
-            raise serializers.ValidationError(
-                'Это действие доступно только авторизированным пользователям'
-            )
+        if user.role == 'admin' or user.is_superuser:
+            return role
 
-        raise serializers.ValidationError(
-            'Изменение роли запрещено'
-        )
+        return 'user'
 
     def validate_username(self, username):
         if username == 'me':

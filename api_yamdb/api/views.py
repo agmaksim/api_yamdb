@@ -28,11 +28,11 @@ from .permissions import OnlyForAdmin, IsAuthorOrReadOnly, ReadOnly
 User = get_user_model()
 
 
-def sending_mail(email, confrim_code):
+def sending_mail(email, confrimation_code):
     try:
         send_mail(
             'Authentification',
-            confrim_code,
+            confrimation_code,
             'api_yambd@example.com',
             [email],
             fail_silently=False,
@@ -50,13 +50,13 @@ def auth_signup(request):
     serializer = SignUpSerializer(data=request.data)
 
     if serializer.is_valid():
-        confrim_code = str(randint(111111, 999999))
+        confrimation_code = str(randint(111111, 999999))
         email = serializer.validated_data.get('email')
-        error = sending_mail(email, confrim_code)
+        error = sending_mail(email, confrimation_code)
         if error:
             return Response(error, status=status.HTTP_400_BAD_REQUEST)
 
-        serializer.validated_data['confirm_code'] = confrim_code
+        serializer.validated_data['confirmation_code'] = confrimation_code
         serializer.save()
         return Response(serializer.data, status=status.HTTP_200_OK)
     
@@ -75,12 +75,12 @@ def auth_signup(request):
         user = get_object_or_404(User, username=username)
 
         if email == user.email:
-            confirm_code = str(randint(111111, 999999))
-            error = sending_mail(email, confirm_code)
+            confirmation_code = str(randint(111111, 999999))
+            error = sending_mail(email, confirmation_code)
             if error:
                 return Response(error, status=status.HTTP_400_BAD_REQUEST)
             
-            user.confirm_code = int(confirm_code)
+            user.confirmation_code = int(confirmation_code)
             user.save()
 
             return Response(serializer.data, status=status.HTTP_200_OK)
@@ -97,15 +97,18 @@ def auth_signup(request):
 @permission_classes([AllowAny])
 def auth_get_token(request):
     serializer = TokenSerializer(data=request.data)
+    username = serializer.initial_data.get('username')
+    code = serializer.initial_data.get('confirmation_code')
+
+    if not (username and code):
+        return Response('Нехватка данных', status=status.HTTP_400_BAD_REQUEST)
 
     user = get_object_or_404(
         User,
-        username=serializer.initial_data.get('username')
+        username=username
     )
 
-    code = serializer.initial_data.get('confirm_code')
-
-    if code == user.confirm_code:
+    if code == user.confirmation_code:
         refresh = RefreshToken.for_user(user)
         
         token =  {
@@ -141,7 +144,7 @@ class UserViewSet(viewsets.ModelViewSet):
             )
             if serializer.is_valid():
                 serializer.save()
-                return Response(serializer.data, status=status.HTTP_201_CREATED)
+                return Response(serializer.data, status=status.HTTP_200_OK)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         serializer = self.get_serializer(user)
