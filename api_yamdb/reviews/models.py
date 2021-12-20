@@ -25,6 +25,7 @@ class Genre(models.Model):
 class Title(models.Model):
     name = models.CharField(max_length=256)
     year = models.IntegerField()
+    description = models.TextField()
     category = models.ForeignKey(
         Category, on_delete=models.PROTECT, related_name='categories')
     genre = models.ManyToManyField(Genre, related_name='genre')
@@ -44,9 +45,15 @@ class Review(models.Model):
 
     class Meta:
         ordering = ['-pub_date']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['author', 'title'],
+                name='unique_name_reviews'
+            )
+        ]
 
     def __str__(self):
-        return self.text[:15]
+        return self.text
 
 
 class Comment(models.Model):
