@@ -24,6 +24,7 @@ from .serializers import (
 )
 from reviews.models import Category, Comment, Genre, Review, Title
 from .permissions import OnlyForAdmin, IsAuthorOrReadOnly, ReadOnly
+from .pagination import YamdbPagination
 
 User = get_user_model()
 
@@ -124,7 +125,7 @@ class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
     lookup_field = 'username'
-    pagination_class = LimitOffsetPagination
+    pagination_class = YamdbPagination
     filter_backends = (DjangoFilterBackend,)
     filterset_fields = ('username',)
 
@@ -154,7 +155,7 @@ class UserViewSet(viewsets.ModelViewSet):
 
 class ReviewViewSet(viewsets.ModelViewSet):
     serializer_class = ReviewSerializer
-    pagination_class = LimitOffsetPagination
+    pagination_class = YamdbPagination
     permission_classes = (IsAuthorOrReadOnly,)
     filter_backends = (filters.SearchFilter,)
     search_fields = ('=name',)
@@ -170,7 +171,7 @@ class ReviewViewSet(viewsets.ModelViewSet):
 
 class TitleViewSet(viewsets.ModelViewSet):
     queryset = Title.objects.all().annotate(Avg('reviews__score'))
-    pagination_class = LimitOffsetPagination
+    pagination_class = YamdbPagination
     filter_backends = (DjangoFilterBackend,)
     filterset_fields = ('name', 'category__slug', 'genre__slug')
     permission_classes = (ReadOnly,)
@@ -185,7 +186,7 @@ class GenreViewSet(viewsets.ModelViewSet):
     queryset = Genre.objects.all()
     lookup_field = 'slug'
     serializer_class = GenreSerializer
-    pagination_class = LimitOffsetPagination
+    pagination_class = YamdbPagination
     filter_backends = (filters.SearchFilter,)
     search_fields = ('=name',)
     permission_classes = (ReadOnly,)
@@ -193,7 +194,7 @@ class GenreViewSet(viewsets.ModelViewSet):
 
 class CommentViewSet(viewsets.ModelViewSet):
     serializer_class = CommentSerializer
-    pagination_class = LimitOffsetPagination
+    pagination_class = YamdbPagination
     permission_classes = (IsAuthorOrReadOnly,)
 
     def perform_create(self, serializer):
@@ -212,7 +213,7 @@ class CategoryViewSet(viewsets.ModelViewSet):
     queryset = Category.objects.all()
     lookup_field = 'slug'
     serializer_class = CategorySerializer
-    pagination_class = LimitOffsetPagination
+    pagination_class = YamdbPagination
     filter_backends = (filters.SearchFilter,)
     search_fields = ('=name',)
     permission_classes = (ReadOnly,)
