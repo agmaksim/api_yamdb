@@ -30,7 +30,8 @@ from .pagination import YamdbPagination
 User = get_user_model()
 
 
-class CreateDestroyListViewSet(mixins.CreateModelMixin,
+class CreateDestroyListViewSet(
+    mixins.CreateModelMixin,
     mixins.DestroyModelMixin,
     mixins.ListModelMixin,
     viewsets.GenericViewSet
