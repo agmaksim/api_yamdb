@@ -4,9 +4,8 @@ from django.contrib.auth import get_user_model
 from django.core.mail import send_mail
 from django.db.models import Avg
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import viewsets, filters, status
+from rest_framework import viewsets, filters, status, mixins
 from rest_framework.decorators import action, api_view, permission_classes
-from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -27,6 +26,10 @@ from .permissions import OnlyForAdmin, IsAuthorOrReadOnly, ReadOnly
 from .pagination import YamdbPagination
 
 User = get_user_model()
+
+
+class CreateDestroyListViewSet(mixins.CreateModelMixin, mixins.DestroyModelMixin, mixins.ListModelMixin, viewsets.GenericViewSet):
+    pass
 
 
 def sending_mail(email, confrimation_code):
@@ -182,7 +185,7 @@ class TitleViewSet(viewsets.ModelViewSet):
         return TitleWriteSerializer
 
 
-class GenreViewSet(viewsets.ModelViewSet):
+class GenreViewSet(CreateDestroyListViewSet):
     queryset = Genre.objects.all()
     lookup_field = 'slug'
     serializer_class = GenreSerializer
@@ -190,6 +193,10 @@ class GenreViewSet(viewsets.ModelViewSet):
     filter_backends = (filters.SearchFilter,)
     search_fields = ('=name',)
     permission_classes = (ReadOnly,)
+
+    def get_queryset(self):
+        queryset = Genre.objects.filter(genre__id=self.kwargs.get('genre'))
+        return queryset
 
 
 class CommentViewSet(viewsets.ModelViewSet):
@@ -209,7 +216,7 @@ class CommentViewSet(viewsets.ModelViewSet):
         return queryset
 
 
-class CategoryViewSet(viewsets.ModelViewSet):
+class CategoryViewSet(CreateDestroyListViewSet):
     queryset = Category.objects.all()
     lookup_field = 'slug'
     serializer_class = CategorySerializer
