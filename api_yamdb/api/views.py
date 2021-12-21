@@ -30,7 +30,8 @@ from .pagination import YamdbPagination
 User = get_user_model()
 
 
-class CreateDestroyListViewSet(mixins.CreateModelMixin,
+class CreateDestroyListViewSet(
+    mixins.CreateModelMixin,
     mixins.DestroyModelMixin,
     mixins.ListModelMixin,
     viewsets.GenericViewSet
@@ -131,7 +132,7 @@ def auth_get_token(request):
 
 class UserViewSet(viewsets.ModelViewSet):
     permission_classes = (OnlyForAdmin,)
-    queryset = User.objects.all()
+    queryset = User.objects.get_queryset().order_by('id')
     serializer_class = UserSerializer
     lookup_field = 'username'
     pagination_class = YamdbPagination
@@ -179,7 +180,7 @@ class ReviewViewSet(viewsets.ModelViewSet):
 
 
 class TitleViewSet(viewsets.ModelViewSet):
-    queryset = Title.objects.all().annotate(Avg('reviews__score'))
+    queryset = Title.objects.get_queryset().order_by('id').annotate(Avg('reviews__score'))
     pagination_class = YamdbPagination
     filter_backends = (DjangoFilterBackend,)
     filterset_class = TitleFilter
@@ -192,17 +193,13 @@ class TitleViewSet(viewsets.ModelViewSet):
 
 
 class GenreViewSet(CreateDestroyListViewSet):
-    queryset = Genre.objects.all()
+    queryset = Genre.objects.get_queryset().order_by('id')
     lookup_field = 'slug'
     serializer_class = GenreSerializer
     pagination_class = YamdbPagination
     filter_backends = (filters.SearchFilter,)
     search_fields = ('=name',)
     permission_classes = (ReadOnly,)
-
-    def get_queryset(self):
-        queryset = Genre.objects.filter(genre__id=self.kwargs.get('genre'))
-        return queryset
 
 
 class CommentViewSet(viewsets.ModelViewSet):
@@ -223,7 +220,7 @@ class CommentViewSet(viewsets.ModelViewSet):
 
 
 class CategoryViewSet(CreateDestroyListViewSet):
-    queryset = Category.objects.all()
+    queryset = Category.objects.get_queryset().order_by('id')
     lookup_field = 'slug'
     serializer_class = CategorySerializer
     pagination_class = YamdbPagination
