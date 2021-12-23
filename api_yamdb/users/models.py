@@ -18,6 +18,6 @@ class User(AbstractUser):
         choices=ROLES_CHOICES,
         default=USER,
     )
-
+    email = models.EmailField(unique=True)
     bio = models.CharField(max_length=256, blank=True)
     confirmation_code = models.IntegerField(blank=True, null=True)
