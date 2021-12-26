@@ -49,4 +49,3 @@ class IsAuthorOrReadOnly(permissions.BasePermission):
             return obj.author == request.user or is_staff(request.user)
 
         return False
-
