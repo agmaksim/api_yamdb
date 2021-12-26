@@ -7,7 +7,11 @@ from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets, filters, status, mixins
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.permissions import (
+    IsAuthenticated,
+    AllowAny,
+    IsAuthenticatedOrReadOnly
+)
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from .filters import TitleFilter
@@ -75,7 +79,10 @@ def auth_signup(request):
     if serializer.errors.get('username'):
         error_code = serializer.errors.get('username')[0].code
     else:
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        return Response(
+            serializer.errors,
+            status=status.HTTP_400_BAD_REQUEST
+        )
 
     # Не прошло валидацию:
     # Если из-за наличия user'a с таким именем - повторное получение кода
@@ -112,7 +119,10 @@ def auth_get_token(request):
     code = serializer.initial_data.get('confirmation_code')
 
     if not (username and code):
-        return Response('Нехватка данных', status=status.HTTP_400_BAD_REQUEST)
+        return Response(
+            'Нехватка данных',
+            status=status.HTTP_400_BAD_REQUEST
+        )
 
     user = get_object_or_404(
         User,
@@ -146,27 +156,26 @@ class UserViewSet(viewsets.ModelViewSet):
         permission_classes=(IsAuthenticated,)
     )
     def users_profile(self, request):
-        user = get_object_or_404(User, username=request.user.username)
+        user = request.user
+        if request.method == 'GET':
+            serializer = self.get_serializer(user)
+            return Response(serializer.data, status=status.HTTP_200_OK)
 
-        if request.method == 'PATCH':
-            serializer = UserSerializer(
-                # Передаю объект request для проверки прав на стадии валидации
-                user, context={'request': request}, data=request.data, partial=True
-            )
-            if serializer.is_valid():
-                serializer.save()
-                return Response(serializer.data, status=status.HTTP_200_OK)
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        serializer = self.get_serializer(
+            user,
+            data=request.data,
+            partial=True
+        )
+        serializer.is_valid(raise_exception=True)
 
-        serializer = self.get_serializer(user)
-
-        return Response(serializer.data)
+        serializer.save(role=user.role, partial=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 class ReviewViewSet(viewsets.ModelViewSet):
     serializer_class = ReviewSerializer
     pagination_class = YamdbPagination
-    permission_classes = (IsAuthorOrReadOnly,)
+    permission_classes = (IsAuthorOrReadOnly, IsAuthenticatedOrReadOnly)
     filter_backends = (filters.SearchFilter,)
     search_fields = ('=name',)
 
@@ -180,7 +189,9 @@ class ReviewViewSet(viewsets.ModelViewSet):
 
 
 class TitleViewSet(viewsets.ModelViewSet):
-    queryset = Title.objects.get_queryset().order_by('id').annotate(Avg('reviews__score'))
+    queryset = Title.objects.get_queryset().order_by('id').annotate(
+        Avg('reviews__score')
+    )
     pagination_class = YamdbPagination
     filter_backends = (DjangoFilterBackend,)
     filterset_class = TitleFilter
@@ -205,7 +216,7 @@ class GenreViewSet(CreateDestroyListViewSet):
 class CommentViewSet(viewsets.ModelViewSet):
     serializer_class = CommentSerializer
     pagination_class = YamdbPagination
-    permission_classes = (IsAuthorOrReadOnly,)
+    permission_classes = (IsAuthorOrReadOnly, IsAuthenticatedOrReadOnly)
 
     def perform_create(self, serializer):
         title_id = self.kwargs.get('title_id')
