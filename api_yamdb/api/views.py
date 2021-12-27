@@ -189,9 +189,9 @@ class ReviewViewSet(viewsets.ModelViewSet):
 
 
 class TitleViewSet(viewsets.ModelViewSet):
-    queryset = Title.objects.get_queryset().order_by('id').annotate(
+    queryset = Title.objects.get_queryset().annotate(
         Avg('reviews__score')
-    )
+    ).order_by('id')
     pagination_class = YamdbPagination
     filter_backends = (DjangoFilterBackend,)
     filterset_class = TitleFilter

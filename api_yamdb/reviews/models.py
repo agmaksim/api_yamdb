@@ -7,24 +7,32 @@ CHOICES = zip(range(1, 11), range(1, 11))
 
 
 class Category(models.Model):
-    name = models.CharField(max_length=64)
+    name = models.CharField(max_length=256)
     slug = models.SlugField(unique=True)
 
     def __str__(self):
         return self.name
+
+    class Meta:
+        verbose_name = 'category'
+        verbose_name_plural = 'categories'
 
 
 class Genre(models.Model):
-    name = models.CharField(max_length=64)
+    name = models.CharField(max_length=256)
     slug = models.SlugField(unique=True)
 
     def __str__(self):
         return self.name
+
+    class Meta:
+        verbose_name = 'genre'
+        verbose_name_plural = 'genres'
 
 
 class Title(models.Model):
     name = models.CharField(max_length=256)
-    year = models.IntegerField()
+    year = models.PositiveIntegerField()
     description = models.TextField()
     category = models.ForeignKey(
         Category, on_delete=models.PROTECT, related_name='categories')
@@ -32,6 +40,10 @@ class Title(models.Model):
 
     def __str__(self):
         return self.name
+
+    class Meta:
+        verbose_name = 'title'
+        verbose_name_plural = 'titles'
 
 
 class Review(models.Model):
