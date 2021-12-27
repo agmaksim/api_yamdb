@@ -4,7 +4,7 @@ from django.contrib.auth import get_user_model
 from django.core.mail import send_mail
 from django.db.models import Avg
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import viewsets, filters, status, mixins
+from rest_framework import viewsets, filters, status, mixins, serializers
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import (
@@ -64,51 +64,66 @@ def sending_mail(email, confrimation_code):
 def auth_signup(request):
     serializer = SignUpSerializer(data=request.data)
 
-    if serializer.is_valid():
+    try:
+        serializer.is_valid(raise_exception=True)
         confrimation_code = str(randint(111111, 999999))
         email = serializer.validated_data.get('email')
         error = sending_mail(email, confrimation_code)
         if error:
             return Response(error, status=status.HTTP_400_BAD_REQUEST)
-
+        
+        '''
+        В signup мы сохраняем код подтверждения, т.к. пользователь 
+        будет отправлять запрос на другой эндпоинт, и нам нужно будет
+        сопоставить полученный код со сгенерированным здесь
+        '''
         serializer.validated_data['confirmation_code'] = confrimation_code
         serializer.save()
         return Response(serializer.data, status=status.HTTP_200_OK)
+    
+    except serializers.ValidationError:
+        '''
+        Если ошибка в имени user'a, то она может быть связана
+        c существованием user'a с таким именем, поэтому необходимо
+        проверить код ошибки.
+        Иначе валидация провалена по другим причинам, которые вообщем
+        нам неинтересны
+        '''
+        if serializer.errors.get('username'):
+            error_code = serializer.errors.get('username')[0].code
+        else:
+            return Response(
+                serializer.errors,
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
-    # Если есть ошибка в имени пользователя
-    if serializer.errors.get('username'):
-        error_code = serializer.errors.get('username')[0].code
-    else:
-        return Response(
-            serializer.errors,
-            status=status.HTTP_400_BAD_REQUEST
-        )
+        '''
+        Не прошло валидацию из-за username:
+        Если из-за наличия user'a с таким именем - повторное получение кода
+        Иначе - некорректные данные
+        '''
+        if error_code == 'unique':
+            username = serializer.initial_data.get('username')
+            email = serializer.initial_data.get('email')
+            user = get_object_or_404(User, username=username)
 
-    # Не прошло валидацию:
-    # Если из-за наличия user'a с таким именем - повторное получение кода
-    # Иначе - некорректные данные
-    if error_code == 'unique':
-        username = serializer.initial_data.get('username')
-        email = serializer.initial_data.get('email')
-        user = get_object_or_404(User, username=username)
+            if email == user.email:
+                confirmation_code = str(randint(111111, 999999))
+                error = sending_mail(email, confirmation_code)
+                if error:
+                    return Response(error, status=status.HTTP_400_BAD_REQUEST)
 
-        if email == user.email:
-            confirmation_code = str(randint(111111, 999999))
-            error = sending_mail(email, confirmation_code)
-            if error:
-                return Response(error, status=status.HTTP_400_BAD_REQUEST)
+                user.confirmation_code = int(confirmation_code)
+                user.save()
 
-            user.confirmation_code = int(confirmation_code)
-            user.save()
+                return Response(serializer.data, status=status.HTTP_200_OK)
 
-            return Response(serializer.data, status=status.HTTP_200_OK)
+            return Response(
+                'Полученная почта не является почтой данного пользователя',
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
-        return Response(
-            'Полученная почта не является почтой данного пользователя',
-            status=status.HTTP_400_BAD_REQUEST
-        )
-
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 @api_view(['POST', ])
@@ -118,11 +133,7 @@ def auth_get_token(request):
     username = serializer.initial_data.get('username')
     code = serializer.initial_data.get('confirmation_code')
 
-    if not (username and code):
-        return Response(
-            'Нехватка данных',
-            status=status.HTTP_400_BAD_REQUEST
-        )
+    serializer.is_valid(raise_exception=True)
 
     user = get_object_or_404(
         User,
@@ -142,7 +153,7 @@ def auth_get_token(request):
 
 class UserViewSet(viewsets.ModelViewSet):
     permission_classes = (OnlyForAdmin,)
-    queryset = User.objects.get_queryset().order_by('id')
+    queryset = User.objects.all().order_by('username')
     serializer_class = UserSerializer
     lookup_field = 'username'
     pagination_class = YamdbPagination
