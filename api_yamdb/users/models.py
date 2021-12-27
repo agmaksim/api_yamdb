@@ -27,7 +27,6 @@ class User(AbstractUser):
     first_name = models.CharField(max_length=150, blank=True)
     email = models.EmailField(max_length=254, unique=True)
     bio = models.CharField(max_length=256, blank=True)
-    confirmation_code = models.IntegerField(blank=True, null=True)
 
     @property
     def is_admin(self):

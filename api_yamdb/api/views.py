@@ -1,6 +1,7 @@
 from random import randint
 from django.shortcuts import get_object_or_404
 from django.contrib.auth import get_user_model
+from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.core.mail import send_mail
 from django.db.models import Avg
 from django_filters.rest_framework import DjangoFilterBackend
@@ -63,22 +64,25 @@ def sending_mail(email, confrimation_code):
 @permission_classes([AllowAny])
 def auth_signup(request):
     serializer = SignUpSerializer(data=request.data)
+    code_generator = PasswordResetTokenGenerator()
 
     try:
         serializer.is_valid(raise_exception=True)
-        confrimation_code = str(randint(111111, 999999))
+        serializer.save()
+        # Создается новый user и тут же используется для алгоритмов
+        # генерации токена
+        username = serializer.validated_data.get('username')
+        user = get_object_or_404(
+            User, username=username
+        )
+        confirmation_code = code_generator.make_token(
+            user=user
+        )
         email = serializer.validated_data.get('email')
-        error = sending_mail(email, confrimation_code)
+        error = sending_mail(email, confirmation_code)
         if error:
             return Response(error, status=status.HTTP_400_BAD_REQUEST)
-        
-        '''
-        В signup мы сохраняем код подтверждения, т.к. пользователь 
-        будет отправлять запрос на другой эндпоинт, и нам нужно будет
-        сопоставить полученный код со сгенерированным здесь
-        '''
-        serializer.validated_data['confirmation_code'] = confrimation_code
-        serializer.save()
+
         return Response(serializer.data, status=status.HTTP_200_OK)
     
     except serializers.ValidationError:
@@ -108,13 +112,12 @@ def auth_signup(request):
             user = get_object_or_404(User, username=username)
 
             if email == user.email:
-                confirmation_code = str(randint(111111, 999999))
+                confirmation_code = code_generator.make_token(
+                    user=user
+                )
                 error = sending_mail(email, confirmation_code)
                 if error:
                     return Response(error, status=status.HTTP_400_BAD_REQUEST)
-
-                user.confirmation_code = int(confirmation_code)
-                user.save()
 
                 return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -130,6 +133,7 @@ def auth_signup(request):
 @permission_classes([AllowAny])
 def auth_get_token(request):
     serializer = TokenSerializer(data=request.data)
+    code_generator = PasswordResetTokenGenerator()
     username = serializer.initial_data.get('username')
     code = serializer.initial_data.get('confirmation_code')
 
@@ -140,7 +144,7 @@ def auth_get_token(request):
         username=username
     )
 
-    if code == user.confirmation_code:
+    if code_generator.check_token(user=user, code=code):
         refresh = RefreshToken.for_user(user)
 
         token = {

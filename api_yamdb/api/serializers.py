@@ -29,7 +29,7 @@ class SignUpSerializer(serializers.ModelSerializer):
 
 
 class TokenSerializer(serializers.ModelSerializer):
-    confirmation_code = serializers.IntegerField(required=True)
+    confirmation_code = serializers.CharField(required=True)
 
     class Meta:
         fields = (
