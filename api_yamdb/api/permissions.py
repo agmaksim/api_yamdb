@@ -49,3 +49,15 @@ class IsAuthorOrReadOnly(permissions.BasePermission):
             return obj.author == request.user or is_staff(request.user)
 
         return False
+
+
+class NoRoleChange(permissions.BasePermission):
+    '''
+    Запрещает изменять поле role в /me обычным пользователям
+    '''
+
+    def has_object_permission(self, request, views, obj):
+        if request.context.get('role'):
+            return is_admin(request.user)
+
+        return True
