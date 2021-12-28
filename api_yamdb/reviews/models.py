@@ -45,7 +45,8 @@ class Title(models.Model):
     year = models.PositiveSmallIntegerField(verbose_name='Год')
     description = models.TextField(verbose_name='Описание', blank=True)
     category = models.ForeignKey(
-        Category, on_delete=models.PROTECT, related_name='categories', verbose_name='Категория')
+        Category, on_delete=models.PROTECT,
+        related_name='categories', verbose_name='Категория')
     genre = models.ManyToManyField(
         Genre, related_name='genre', verbose_name='Жанр')
 
@@ -57,10 +58,6 @@ class Title(models.Model):
     def __str__(self):
         return self.name
 
-    class Meta:
-        verbose_name = 'title'
-        verbose_name_plural = 'titles'
-
 
 class Review(models.Model):
     text = models.TextField(verbose_name='Текст')
@@ -69,9 +66,11 @@ class Review(models.Model):
     pub_date = models.DateTimeField(
         verbose_name='Дата публикации', auto_now_add=True)
     title = models.ForeignKey(
-        Title, on_delete=models.CASCADE, related_name='reviews', verbose_name='Произведение')
+        Title, on_delete=models.CASCADE,
+        related_name='reviews', verbose_name='Произведение')
     author = models.ForeignKey(
-        User, on_delete=models.CASCADE, related_name='reviews', verbose_name='Автор')
+        User, on_delete=models.CASCADE,
+        related_name='reviews', verbose_name='Автор')
 
     class Meta:
         ordering = ['-pub_date']
@@ -92,9 +91,11 @@ class Comment(models.Model):
     pub_date = models.DateTimeField(
         verbose_name='Дата публикации', auto_now_add=True)
     author = models.ForeignKey(
-        User, on_delete=models.CASCADE, related_name='comments', verbose_name='Автор')
+        User, on_delete=models.CASCADE, related_name='comments',
+        verbose_name='Автор')
     review = models.ForeignKey(
-        Review, on_delete=models.CASCADE, related_name='comments', verbose_name='Обзор')
+        Review, on_delete=models.CASCADE,
+        related_name='comments', verbose_name='Обзор')
     text = models.TextField(verbose_name='Текст')
 
     class Meta:

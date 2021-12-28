@@ -1,11 +1,10 @@
-from random import randint
 from django.shortcuts import get_object_or_404
 from django.contrib.auth import get_user_model
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.core.mail import send_mail
 from django.db.models import Avg
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import viewsets, filters, status, mixins, serializers
+from rest_framework import viewsets, filters, status, mixins
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import (
@@ -28,7 +27,7 @@ from .serializers import (
     SignUpSerializer,
     TokenSerializer,
 )
-from reviews.models import Category, Comment, Genre, Review, Title
+from reviews.models import Category, Genre, Review, Title
 from .permissions import (
     OnlyForAdmin,
     IsAuthorOrReadOnly,
@@ -92,7 +91,7 @@ def auth_signup(request):
                 return Response(error, status=status.HTTP_400_BAD_REQUEST)
 
             return Response(serializer.data, status=status.HTTP_200_OK)
-            
+
         return Response(
             'Полученная почта не является почтой данного пользователя',
             status=status.HTTP_400_BAD_REQUEST
@@ -113,7 +112,6 @@ def auth_signup(request):
         return Response(error, status=status.HTTP_400_BAD_REQUEST)
 
     return Response(serializer.data, status=status.HTTP_200_OK)
-
 
 
 @api_view(['POST', ])

@@ -22,7 +22,7 @@ class SignUpSerializer(serializers.Serializer):
             )
 
         return username
-    
+
     def create(self, validated_data):
         return User.objects.create(**validated_data)
 
@@ -58,7 +58,7 @@ class UserSerializer(serializers.ModelSerializer):
             )
 
         return username
-    
+
     def create(self, validated_data):
         return User.objects.create(**validated_data)
 

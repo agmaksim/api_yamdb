@@ -31,7 +31,7 @@ class User(AbstractUser):
     @property
     def is_admin(self):
         return self.role == self.ADMIN
-    
+
     @property
     def is_personnel(self):
         return self.role in self.STAFF
