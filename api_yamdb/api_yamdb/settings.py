@@ -117,6 +117,7 @@ USE_L10N = True
 
 USE_TZ = True
 
+SITE_EMAIL = 'api_yambd@example.com'
 
 # Static files (CSS, JavaScript, Images)
 

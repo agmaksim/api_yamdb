@@ -8,16 +8,12 @@ from reviews.models import Category, Comment, Review, Genre, Title
 User = get_user_model()
 
 
-class SignUpSerializer(serializers.ModelSerializer):
+class SignUpSerializer(serializers.Serializer):
     email = serializers.EmailField(
-        validators=[UniqueValidator(queryset=User.objects.all())]
+        validators=[UniqueValidator(queryset=User.objects.all())],
+        required=True
     )
-
-    class Meta:
-        fields = (
-            'username', 'email'
-        )
-        model = User
+    username = serializers.CharField(max_length=154, required=True)
 
     def validate_username(self, username):
         if username == 'me':
@@ -26,16 +22,14 @@ class SignUpSerializer(serializers.ModelSerializer):
             )
 
         return username
+    
+    def create(self, validated_data):
+        return User.objects.create(**validated_data)
 
 
-class TokenSerializer(serializers.ModelSerializer):
-    confirmation_code = serializers.IntegerField(required=True)
-
-    class Meta:
-        fields = (
-            'username', 'confirmation_code'
-        )
-        model = User
+class TokenSerializer(serializers.Serializer):
+    confirmation_code = serializers.CharField(max_length=64, required=True)
+    username = serializers.CharField(max_length=154, required=True)
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -64,6 +58,9 @@ class UserSerializer(serializers.ModelSerializer):
             )
 
         return username
+    
+    def create(self, validated_data):
+        return User.objects.create(**validated_data)
 
 
 class ReviewSerializer(serializers.ModelSerializer):
