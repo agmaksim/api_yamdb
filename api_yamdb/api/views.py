@@ -207,7 +207,7 @@ class TitleViewSet(viewsets.ModelViewSet):
 
 
 class GenreViewSet(CreateDestroyListViewSet):
-    queryset = Genre.objects.all()
+    queryset = Genre.objects.get_queryset().order_by('id')
     lookup_field = 'slug'
     serializer_class = GenreSerializer
     pagination_class = YamdbPagination
@@ -234,7 +234,7 @@ class CommentViewSet(viewsets.ModelViewSet):
 
 
 class CategoryViewSet(CreateDestroyListViewSet):
-    queryset = Category.objects.all()
+    queryset = Category.objects.get_queryset().order_by('id')
     lookup_field = 'slug'
     serializer_class = CategorySerializer
     pagination_class = YamdbPagination
