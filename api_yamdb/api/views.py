@@ -1,10 +1,11 @@
 from random import randint
 from django.shortcuts import get_object_or_404
 from django.contrib.auth import get_user_model
+from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.core.mail import send_mail
 from django.db.models import Avg
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import viewsets, filters, status, mixins
+from rest_framework import viewsets, filters, status, mixins, serializers
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import (
@@ -28,8 +29,14 @@ from .serializers import (
     TokenSerializer,
 )
 from reviews.models import Category, Comment, Genre, Review, Title
-from .permissions import OnlyForAdmin, IsAuthorOrReadOnly, ReadOnly
+from .permissions import (
+    OnlyForAdmin,
+    IsAuthorOrReadOnly,
+    ReadOnly,
+    NoRoleChange
+)
 from .pagination import YamdbPagination
+from api_yamdb.settings import SITE_EMAIL
 
 User = get_user_model()
 
@@ -46,14 +53,12 @@ class CreateDestroyListViewSet(
 def sending_mail(email, confrimation_code):
     try:
         send_mail(
-            'Authentification',
+            'Аутентификация',
             confrimation_code,
-            'api_yambd@example.com',
+            SITE_EMAIL,
             [email],
             fail_silently=False,
         )
-
-        return None
 
     except Exception:
         return 'Ошибка при отправке сообщения'
@@ -63,73 +68,70 @@ def sending_mail(email, confrimation_code):
 @permission_classes([AllowAny])
 def auth_signup(request):
     serializer = SignUpSerializer(data=request.data)
+    code_generator = PasswordResetTokenGenerator()
 
-    if serializer.is_valid():
-        confrimation_code = str(randint(111111, 999999))
-        email = serializer.validated_data.get('email')
-        error = sending_mail(email, confrimation_code)
-        if error:
-            return Response(error, status=status.HTTP_400_BAD_REQUEST)
+    serializer.is_valid(raise_exception=True)
+    username = serializer.validated_data.get('username')
+    try:
+        user = User.objects.get(username=username)
+    except User.DoesNotExist:
+        user = None
 
-        serializer.validated_data['confirmation_code'] = confrimation_code
-        serializer.save()
-        return Response(serializer.data, status=status.HTTP_200_OK)
-
-    # Если есть ошибка в имени пользователя
-    if serializer.errors.get('username'):
-        error_code = serializer.errors.get('username')[0].code
-    else:
-        return Response(
-            serializer.errors,
-            status=status.HTTP_400_BAD_REQUEST
-        )
-
-    # Не прошло валидацию:
-    # Если из-за наличия user'a с таким именем - повторное получение кода
-    # Иначе - некорректные данные
-    if error_code == 'unique':
-        username = serializer.initial_data.get('username')
+    # Если такой user уже есть
+    if user:
         email = serializer.initial_data.get('email')
-        user = get_object_or_404(User, username=username)
 
         if email == user.email:
-            confirmation_code = str(randint(111111, 999999))
+            confirmation_code = code_generator.make_token(
+                user=user
+            )
+            email = serializer.validated_data.get('email')
             error = sending_mail(email, confirmation_code)
+
             if error:
                 return Response(error, status=status.HTTP_400_BAD_REQUEST)
 
-            user.confirmation_code = int(confirmation_code)
-            user.save()
-
             return Response(serializer.data, status=status.HTTP_200_OK)
-
+            
         return Response(
             'Полученная почта не является почтой данного пользователя',
             status=status.HTTP_400_BAD_REQUEST
         )
 
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    serializer.save()
+    # Создается новый user и тут же используется для алгоритмов
+    # генерации токена
+    user = get_object_or_404(
+        User, username=username
+    )
+    confirmation_code = code_generator.make_token(
+        user=user
+    )
+    email = serializer.validated_data.get('email')
+    error = sending_mail(email, confirmation_code)
+    if error:
+        return Response(error, status=status.HTTP_400_BAD_REQUEST)
+
+    return Response(serializer.data, status=status.HTTP_200_OK)
+
 
 
 @api_view(['POST', ])
 @permission_classes([AllowAny])
 def auth_get_token(request):
     serializer = TokenSerializer(data=request.data)
+    code_generator = PasswordResetTokenGenerator()
     username = serializer.initial_data.get('username')
     code = serializer.initial_data.get('confirmation_code')
 
-    if not (username and code):
-        return Response(
-            'Нехватка данных',
-            status=status.HTTP_400_BAD_REQUEST
-        )
+    serializer.is_valid(raise_exception=True)
 
     user = get_object_or_404(
         User,
         username=username
     )
 
-    if code == user.confirmation_code:
+    if code_generator.check_token(user=user, token=code):
         refresh = RefreshToken.for_user(user)
 
         token = {
@@ -142,7 +144,7 @@ def auth_get_token(request):
 
 class UserViewSet(viewsets.ModelViewSet):
     permission_classes = (OnlyForAdmin,)
-    queryset = User.objects.get_queryset().order_by('id')
+    queryset = User.objects.all().order_by('username')
     serializer_class = UserSerializer
     lookup_field = 'username'
     pagination_class = YamdbPagination
@@ -153,7 +155,7 @@ class UserViewSet(viewsets.ModelViewSet):
         methods=['get', 'patch'],
         detail=False,
         url_path='me',
-        permission_classes=(IsAuthenticated,)
+        permission_classes=(IsAuthenticated, NoRoleChange)
     )
     def users_profile(self, request):
         user = request.user

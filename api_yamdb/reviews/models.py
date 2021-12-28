@@ -18,6 +18,10 @@ class Category(models.Model):
     def __str__(self):
         return self.name
 
+    class Meta:
+        verbose_name = 'category'
+        verbose_name_plural = 'categories'
+
 
 class Genre(models.Model):
     name = models.CharField(max_length=256, verbose_name='Название')
@@ -30,6 +34,10 @@ class Genre(models.Model):
 
     def __str__(self):
         return self.name
+
+    class Meta:
+        verbose_name = 'genre'
+        verbose_name_plural = 'genres'
 
 
 class Title(models.Model):
@@ -48,6 +56,10 @@ class Title(models.Model):
 
     def __str__(self):
         return self.name
+
+    class Meta:
+        verbose_name = 'title'
+        verbose_name_plural = 'titles'
 
 
 class Review(models.Model):
