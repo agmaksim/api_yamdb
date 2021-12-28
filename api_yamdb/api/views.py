@@ -184,14 +184,15 @@ class ReviewViewSet(viewsets.ModelViewSet):
         serializer.save(author=self.request.user, title=title)
 
     def get_queryset(self):
-        queryset = Review.objects.filter(title__id=self.kwargs.get('title_id'))
+        title = get_object_or_404(Title, id=self.kwargs.get('title_id'))
+        queryset = title.reviews.all()
         return queryset
 
 
 class TitleViewSet(viewsets.ModelViewSet):
-    queryset = Title.objects.get_queryset().order_by('id').annotate(
+    queryset = Title.objects.annotate(
         Avg('reviews__score')
-    )
+    ).order_by('id')
     pagination_class = YamdbPagination
     filter_backends = (DjangoFilterBackend,)
     filterset_class = TitleFilter
@@ -204,7 +205,7 @@ class TitleViewSet(viewsets.ModelViewSet):
 
 
 class GenreViewSet(CreateDestroyListViewSet):
-    queryset = Genre.objects.get_queryset().order_by('id')
+    queryset = Genre.objects.all()
     lookup_field = 'slug'
     serializer_class = GenreSerializer
     pagination_class = YamdbPagination
@@ -225,13 +226,13 @@ class CommentViewSet(viewsets.ModelViewSet):
         serializer.save(author=self.request.user, review=review)
 
     def get_queryset(self):
-        queryset = Comment.objects.filter(
-            review__id=self.kwargs.get('review_id'))
+        review = get_object_or_404(Review, id=self.kwargs.get('review_id'))
+        queryset = review.comments.all()
         return queryset
 
 
 class CategoryViewSet(CreateDestroyListViewSet):
-    queryset = Category.objects.get_queryset().order_by('id')
+    queryset = Category.objects.all()
     lookup_field = 'slug'
     serializer_class = CategorySerializer
     pagination_class = YamdbPagination
