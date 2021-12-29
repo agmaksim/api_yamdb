@@ -1,9 +1,17 @@
 from django.contrib.auth import get_user_model
+from django.core.exceptions import ValidationError
 from django.db import models
+
+import datetime as dt
 
 User = get_user_model()
 
 CHOICES = zip(range(1, 11), range(1, 11))
+
+
+def validate_year(value):
+    if value > dt.datetime.now().year:
+        raise ValidationError(f'Указанный год больше нынешнего: {value}')
 
 
 class Category(models.Model):
@@ -42,7 +50,8 @@ class Genre(models.Model):
 
 class Title(models.Model):
     name = models.CharField(max_length=256, verbose_name='Название')
-    year = models.PositiveSmallIntegerField(verbose_name='Год')
+    year = models.PositiveSmallIntegerField(
+        validators=(validate_year,), verbose_name='Год')
     description = models.TextField(verbose_name='Описание', blank=True)
     category = models.ForeignKey(
         Category, on_delete=models.PROTECT,
