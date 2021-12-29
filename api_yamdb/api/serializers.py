@@ -44,13 +44,6 @@ class UserSerializer(serializers.ModelSerializer):
         )
         model = User
 
-    def validate_role(self, role):
-        user = self.context['request'].user
-        if user.role == 'admin' or user.is_superuser:
-            return role
-
-        return 'user'
-
     def validate_username(self, username):
         if username == 'me':
             raise serializers.ValidationError(

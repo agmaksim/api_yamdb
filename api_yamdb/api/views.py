@@ -3,6 +3,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.core.mail import send_mail
 from django.db.models import Avg
+from django.db.utils import IntegrityError
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets, filters, status, mixins
 from rest_framework.decorators import action, api_view, permission_classes
@@ -71,43 +72,24 @@ def auth_signup(request):
 
     serializer.is_valid(raise_exception=True)
     username = serializer.validated_data.get('username')
+    email = serializer.validated_data.get('email')
     try:
-        user = User.objects.get(username=username)
-    except User.DoesNotExist:
-        user = None
-
-    # Если такой user уже есть
-    if user:
-        email = serializer.initial_data.get('email')
-
-        if email == user.email:
-            confirmation_code = code_generator.make_token(
-                user=user
-            )
-            email = serializer.validated_data.get('email')
-            error = sending_mail(email, confirmation_code)
-
-            if error:
-                return Response(error, status=status.HTTP_400_BAD_REQUEST)
-
-            return Response(serializer.data, status=status.HTTP_200_OK)
-
-        return Response(
-            'Полученная почта не является почтой данного пользователя',
-            status=status.HTTP_400_BAD_REQUEST
+        user, created = User.objects.get_or_create(
+            email=email,
+            username=username
         )
 
-    serializer.save()
-    # Создается новый user и тут же используется для алгоритмов
-    # генерации токена
-    user = get_object_or_404(
-        User, username=username
-    )
+    except IntegrityError:
+        return Response(status=status.HTTP_400_BAD_REQUEST)
+
+    if not (user or created):
+        return Response(status=status.HTTP_400_BAD_REQUEST)
+
     confirmation_code = code_generator.make_token(
         user=user
     )
-    email = serializer.validated_data.get('email')
     error = sending_mail(email, confirmation_code)
+
     if error:
         return Response(error, status=status.HTTP_400_BAD_REQUEST)
 
@@ -142,7 +124,7 @@ def auth_get_token(request):
 
 class UserViewSet(viewsets.ModelViewSet):
     permission_classes = (OnlyForAdmin,)
-    queryset = User.objects.all().order_by('username')
+    queryset = User.objects.all().order_by('date_joined')
     serializer_class = UserSerializer
     lookup_field = 'username'
     pagination_class = YamdbPagination
