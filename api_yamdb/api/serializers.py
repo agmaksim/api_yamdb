@@ -13,7 +13,11 @@ class SignUpSerializer(serializers.Serializer):
         validators=[UniqueValidator(queryset=User.objects.all())],
         required=True
     )
-    username = serializers.CharField(max_length=154, required=True)
+    username = serializers.CharField(
+        max_length=154,
+        validators=[UniqueValidator(queryset=User.objects.all())],
+        required=True
+        )
 
     def validate_username(self, username):
         if username == 'me':
@@ -58,9 +62,6 @@ class UserSerializer(serializers.ModelSerializer):
             )
 
         return username
-
-    def create(self, validated_data):
-        return User.objects.create(**validated_data)
 
 
 class ReviewSerializer(serializers.ModelSerializer):
