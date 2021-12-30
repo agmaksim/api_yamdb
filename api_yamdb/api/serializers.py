@@ -17,7 +17,7 @@ class SignUpSerializer(serializers.Serializer):
         max_length=154,
         validators=[UniqueValidator(queryset=User.objects.all())],
         required=True
-        )
+    )
 
     def validate_username(self, username):
         if username == 'me':
