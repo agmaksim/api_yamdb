@@ -27,9 +27,6 @@ class SignUpSerializer(serializers.Serializer):
 
         return username
 
-    def create(self, validated_data):
-        return User.objects.create(**validated_data)
-
 
 class TokenSerializer(serializers.Serializer):
     confirmation_code = serializers.CharField(max_length=64, required=True)
